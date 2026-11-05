@@ -10,7 +10,20 @@ if (!anonKey || !serviceKey) {
 }
 
 const PASSWORD = 'Demo1234!'
-const admin = createClient(url, serviceKey, { auth: { persistSession: false } })
+
+// Сеть бывает нестабильной — fetch с ретраями для всех вызовов supabase-js.
+async function fetchWithRetry(input, init, attempt = 1) {
+  try {
+    return await fetch(input, init)
+  } catch (e) {
+    if (attempt === 10) throw e
+    await new Promise((r) => setTimeout(r, 1500 * attempt))
+    return fetchWithRetry(input, init, attempt + 1)
+  }
+}
+const opts = { auth: { persistSession: false }, global: { fetch: fetchWithRetry } }
+
+const admin = createClient(url, serviceKey, opts)
 
 async function makeUser(email, name, role) {
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true })
@@ -21,7 +34,7 @@ async function makeUser(email, name, role) {
 }
 
 async function login(email) {
-  const c = createClient(url, anonKey, { auth: { persistSession: false } })
+  const c = createClient(url, anonKey, opts)
   const { error } = await c.auth.signInWithPassword({ email, password: PASSWORD })
   if (error) throw error
   return c

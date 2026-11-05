@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:api": "node scripts/test-api.mjs",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "test:api": "node --dns-result-order=ipv4first scripts/test-api.mjs",
+    "seed:demo": "node --dns-result-order=ipv4first scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
