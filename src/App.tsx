@@ -8,10 +8,27 @@ import TaskPage from './pages/TaskPage'
 import MyTasksPage from './pages/MyTasksPage'
 
 export default function App() {
-  const { session, profile, loading, signOut } = useAuth()
+  const { session, profile, loading, error, signOut } = useAuth()
 
-  if (loading || (session && !profile)) {
+  if (loading || (session && !profile && !error)) {
     return <div className="center muted">Загрузка…</div>
+  }
+  if (session && !profile) {
+    return (
+      <div className="center">
+        <div className="card" style={{ textAlign: 'center' }}>
+          <p>Не удалось загрузить данные. Проверьте соединение с интернетом.</p>
+          <div className="actions" style={{ justifyContent: 'center' }}>
+            <button className="btn primary" onClick={() => window.location.reload()}>
+              Повторить
+            </button>
+            <button className="btn ghost" onClick={signOut}>
+              Выйти
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
   if (!session || !profile) return <Login />
 

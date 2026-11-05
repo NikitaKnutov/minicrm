@@ -7,6 +7,7 @@ interface AuthState {
   session: Session | null
   profile: Profile | null
   loading: boolean
+  error: boolean
   signOut: () => void
 }
 
@@ -16,12 +17,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
@@ -32,21 +35,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     let cancelled = false
+    // Сеть до Supabase может виснуть — не показываем «Загрузка…» бесконечно.
+    const timer = setTimeout(() => {
+      if (!cancelled) setError(true)
+    }, 10000)
     supabase
       .from('profiles')
       .select('*')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
-        if (!cancelled) setProfile(data)
+      .then(({ data, error: queryError }) => {
+        if (cancelled) return
+        clearTimeout(timer)
+        if (queryError || !data) setError(true)
+        else {
+          setError(false)
+          setProfile(data)
+        }
       })
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
   }, [session])
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signOut: () => void supabase.auth.signOut() }}>
+    <AuthContext.Provider value={{ session, profile, loading, error, signOut: () => void supabase.auth.signOut() }}>
       {children}
     </AuthContext.Provider>
   )
